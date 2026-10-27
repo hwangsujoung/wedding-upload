@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>윤성진 & 황수정 사진 업로드</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root {
+    --primary: #537d9d;
+    --ink: #494949;
+    --muted: #607584;
+    --line: #d4e2ed;
+    --input: #f3f4f6;
+    --panel: #f8f8f8;
+    --pale: #dceaf4;
+    --white: #fff;
+    --btn-h: 56px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--white); color: var(--ink);
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 14px; line-height: 20px; -webkit-text-size-adjust: 100%; }
+  body { display: flex; justify-content: center; }
+  #app { position: relative; width: 100%; max-width: 448px; min-height: 100%; background: var(--white); overflow-x: hidden; }
+
+  .screen { display: none; min-height: 100dvh; padding-bottom: calc(var(--btn-h) + 40px + env(safe-area-inset-bottom, 0px)); }
+  .screen.on { display: block; }
+
+  /* 헤더 */
+  .hdr { display: flex; align-items: center; gap: 2px; height: 48px; padding-left: 18px; padding-top: env(safe-area-inset-top, 0px); }
+  .hdr button { display: flex; align-items: center; gap: 2px; border: 0; background: none; padding: 0; font: inherit; font-weight: 500; color: var(--ink); cursor: pointer; }
+  .hdr svg { width: 24px; height: 24px; }
+
+  .pad { padding: 0 16px; }
+  h1 { font-size: 24px; line-height: 32px; font-weight: 600; margin: 16px 0 0; color: var(--ink); }
+  .sub { color: var(--muted); margin: 4px 0 0; }
+  .lbl { font-weight: 500; color: var(--muted); margin: 24px 0 8px; }
+
+  input[type=text] { width: 100%; height: 48px; padding: 0 16px; font: inherit; font-size: 16px; color: var(--ink);
+    background: var(--input); border: 1px solid var(--line); border-radius: 16px; outline: none; }
+  input[type=text]::placeholder { color: var(--muted); }
+  input[type=text]:focus { border-color: var(--primary); }
+
+  /* 하단 고정 버튼 */
+  .cta-wrap { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; pointer-events: none;
+    padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, #fff 60%, rgba(255,255,255,0)); padding-top: 24px; }
+  .cta { pointer-events: auto; width: 100%; max-width: 416px; height: var(--btn-h); border: 0; border-radius: 999px; background: var(--primary);
+    color: #fff; font: inherit; font-weight: 500; cursor: pointer; }
+  .cta:disabled { opacity: .5; cursor: default; }
+  .cta.inline { display: block; max-width: none; margin-top: 16px; }
+
+  /* 표지 */
+  #s0 { padding-bottom: 0; min-height: 100dvh; position: relative; background: var(--pale); }
+  #s0 .photo { position: absolute; inset: 0 0 26% 0; background: var(--pale) center/cover no-repeat; }
+  #s0 .fade { position: absolute; left: 0; right: 0; bottom: 0; height: 50%;
+    background: linear-gradient(to top, #fff 0%, rgba(255,255,255,.7) 50%, rgba(255,255,255,0) 100%); }
+  #s0 .copy { position: absolute; left: 24px; right: 24px; bottom: calc(32px + env(safe-area-inset-bottom, 0px)); }
+  #s0 .date { color: var(--muted); margin: 0; }
+  #s0 .names { font-size: 30px; line-height: 40px; font-weight: 600; color: rgba(73,73,73,.88); margin: 8px 0 8px; }
+  #s0 .msg { font-size: 16px; line-height: 24px; color: var(--muted); margin: 0 0 20px; }
+  #s0 .cta { display: block; max-width: none; }
+
+  /* 파일 선택 */
+  .picker { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; width: 100%; height: 208px;
+    margin-top: 16px; background: #fff; border: 2px dashed var(--line); border-radius: 16px; font: inherit; font-size: 12px; line-height: 16px;
+    font-weight: 500; color: var(--muted); cursor: pointer; }
+  .picker svg { width: 32px; height: 32px; }
+  .guide { margin-top: 16px; padding: 12px; background: var(--panel); border-radius: 16px; color: var(--muted); }
+  .guide p { margin: 0 0 2px; padding-left: 16px; position: relative; }
+  .guide p::before { content: "•"; position: absolute; left: 0; top: 0; font-size: 16px; line-height: 24px; }
+  input[type=file] { display: none; }
+
+  /* 선택한 파일 */
+  .bar { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px 0; }
+  .bar h2 { font-size: 16px; line-height: 24px; font-weight: 600; margin: 0; }
+  .pill { display: flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px 0 10px; background: #fff; border: 1px solid var(--line);
+    border-radius: 999px; box-shadow: 0 1px 2px rgba(0,0,0,.05); font: inherit; font-weight: 500; color: var(--ink); cursor: pointer; }
+  .pill svg { width: 16px; height: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 12px 16px 0; }
+  .cell { position: relative; aspect-ratio: 136 / 114; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); }
+  .cell img, .cell video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cell .vid { position: absolute; left: 6px; bottom: 6px; padding: 1px 6px; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; line-height: 16px; border-radius: 6px; }
+  .cell .rm { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border: 0; padding: 0; background: none; cursor: pointer; }
+  .cell .rm svg { width: 28px; height: 28px; }
+  .cell .ov { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(255,255,255,.72);
+    color: var(--primary); font-weight: 600; }
+  .cell.up .ov, .cell.ok .ov, .cell.bad .ov { display: flex; }
+  .cell.ok .ov { color: var(--primary); }
+  .cell.bad .ov { color: #c7362b; }
+  .cell .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--primary); width: 0; }
+  .cell.up .prog { display: block; }
+  .cell.ok .rm, .cell.up .rm { display: none; }
+
+  /* 완료 */
+  #s4 { text-align: center; }
+  #s4 .check { width: 72px; height: 72px; margin: 120px auto 20px; border-radius: 50%; background: var(--pale); display: flex; align-items: center; justify-content: center; }
+  #s4 .check svg { width: 36px; height: 36px; }
+  #s4 h1 { margin-top: 0; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 0. 표지 -->
+  <section id="s0" class="screen on">
+    <div class="photo" id="cover"></div>
+    <div class="fade"></div>
+    <div class="copy">
+      <p class="date" id="wdate"></p>
+      <p class="names" id="wnames"></p>
+      <p class="msg" id="wmsg"></p>
+      <button class="cta" onclick="go(1)">사진 업로드하기</button>
+    </div>
+  </section>
+
+  <!-- 1. 이름 입력 -->
+  <section id="s1" class="screen">
+    <div class="hdr"><button onclick="go(0)"><svg viewBox="0 0 24 24" fill="none" stroke="#494949" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>이전</button></div>
+    <div class="pad">
+      <h1>이름을 입력해주세요</h1>
+      <p class="sub">사진을 올리면 신랑 신부에게 이 이름으로 표시돼요.</p>
+      <p class="lbl">이름</p>
+      <input id="name" type="text" placeholder="이름을 입력해주세요..." autocomplete="name" maxlength="50" enterkeyhint="next">
+      <button class="cta inline" id="nextBtn" disabled onclick="submitName()">다음으로</button>
+    </div>
+  </section>
+
+  <!-- 2. 파일 선택 -->
+  <section id="s2" class="screen">
+    <div class="hdr"><button onclick="go(1)"><svg viewBox="0 0 24 24" fill="none" stroke="#494949" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>이전</button></div>
+    <div class="pad">
+      <h1><span id="hello"></span>님,<br>업로드할 파일을 선택해주세요.</h1>
+      <button type="button" class="picker" onclick="pick()">
+        <svg viewBox="0 0 32 32" fill="none" stroke="#607584" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="20" height="18" rx="3"/><circle cx="11" cy="14" r="2.2"/><path d="M4 22l6-6 5 5 3-3 6 6"/><path d="M25 4v8M21 8h8"/></svg>
+        사진/비디오 선택하기
+      </button>
+      <div class="guide">
+        <p>iCloud 사진을 불러오는 중에는 확인 후에도 화면이 잠시 그대로 보일 수 있어요. 조금만 기다려주세요.</p>
+        <p>라이브포토는 정지 사진으로 업로드됩니다.</p>
+        <p>파일 형식이나 확장자에 따라 업로드가 제한될 수 있습니다.</p>
+        <p>파일당 용량 제한은 사진 최대 50MB, 비디오 최대 500MB입니다.</p>
+      </div>
+    </div>
+    <div class="cta-wrap"><button class="cta" disabled>업로드 시작 (총 0장)</button></div>
+  </section>
+
+  <!-- 3. 선택한 파일 -->
+  <section id="s3" class="screen">
+    <div class="hdr"><button onclick="go(2)"><svg viewBox="0 0 24 24" fill="none" stroke="#494949" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>이전</button></div>
+    <div class="bar">
+      <h2 id="count">0장 추가됨</h2>
+      <button type="button" class="pill" onclick="pick()"><svg viewBox="0 0 16 16" fill="none" stroke="#494949" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>사진 추가하기</button>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="cta-wrap"><button class="cta" id="upBtn" onclick="startUpload()">업로드 시작 (총 0장)</button></div>
+  </section>
+
+  <!-- 4. 완료 -->
+  <section id="s4" class="screen">
+    <div class="check"><svg viewBox="0 0 36 36" fill="none" stroke="#537d9d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 19l7 7 13-14"/></svg></div>
+    <div class="pad">
+      <h1>소중히 보관할게요</h1>
+      <p class="sub" id="doneMsg"></p>
+    </div>
+    <div class="cta-wrap"><button class="cta" onclick="more()">더 올리기</button></div>
+  </section>
+
+  <input id="file" type="file" accept="image/*,video/*" multiple>
+</div>
+
+<script>
+  // ===== 여기만 수정 =====
+  const API_URL      = 'https://script.google.com/macros/s/AKfycbxjy-89ViarNJhzA7Zf5fF_SLlSAFSzzKrwKV5Vc5WsFa8uhrqa3nVvu46Mz6Lm93EG/exec';
+  const COUPLE_NAMES = '윤성진 & 황수정';
+  const WEDDING_DATE = '2026년 11월 7일';
+  const COVER_MSG    = '오늘의 추억을 사진으로 남겨주시면 소중히 보관하겠습니다';
+  const COVER_IMAGE  = 'cover.jpg';   // index.html 옆에 같이 올리기. 없으면 빈 문자열
+  // ========================
+
+  const MAX_FILES    = 30;
+  const MAX_IMAGE_MB = 50;
+  const MAX_VIDEO_MB = 500;
+  const KEEP_ORIGINAL = true;        // false 로 바꾸면 사진을 아래 크기로 줄여서 저장
+  const RESIZE_MAX   = 2000;
+  const CHUNK        = 8 * 1024 * 1024;
+
+  document.getElementById('wdate').textContent = WEDDING_DATE;
+  document.getElementById('wnames').textContent = COUPLE_NAMES;
+  document.getElementById('wmsg').textContent = COVER_MSG;
+  if (COVER_IMAGE) document.getElementById('cover').style.backgroundImage = `url("${COVER_IMAGE}")`;
+
+  const $ = (id) => document.getElementById(id);
+  const items = [];
+  let userName = '';
+  let busy = false;
+
+  let TOKEN = '';
+  try { TOKEN = localStorage.getItem('uploadToken') || ''; if (!TOKEN) { TOKEN = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('uploadToken', TOKEN); } }
+  catch (e) { TOKEN = Math.random().toString(36).slice(2); }
+
+  // Apps Script API 호출: text/plain 으로 보내야 CORS preflight 가 안 생김
+  async function api(action, payload) {
+    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action, ...payload }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || '요청 실패');
+    return json.data;
+  }
+
+  function go(n) {
+    if (busy) return;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+    $('s' + n).classList.add('on');
+    window.scrollTo(0, 0);
+    if (n === 1) setTimeout(() => $('name').focus(), 50);
+  }
+
+  // --- 1. 이름 ---
+  $('name').oninput = () => { $('nextBtn').disabled = !$('name').value.trim(); };
+  $('name').onkeydown = (e) => { if (e.key === 'Enter' && $('name').value.trim()) submitName(); };
+  async function submitName() {
+    const name = $('name').value.trim();
+    if (!name) return;
+    $('nextBtn').disabled = true; $('nextBtn').textContent = '확인 중…';
+    try {
+      await api('checkName', { name, token: TOKEN });
+      userName = name; $('hello').textContent = name;
+      go(2);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      $('nextBtn').disabled = !$('name').value.trim(); $('nextBtn').textContent = '다음으로';
+    }
+  }
+
+  // --- 2/3. 파일 ---
+  function pick() { if (!busy) $('file').click(); }
+  $('file').onchange = (e) => { [...e.target.files].forEach(add); e.target.value = ''; if (items.length) go(3); refresh(); };
+
+  function add(file) {
+    if (items.length >= MAX_FILES) { alert(`한 번에 ${MAX_FILES}개까지 올릴 수 있어요. 올린 뒤 '더 올리기'로 이어서 올려 주세요.`); return; }
+    const isVideo = file.type.startsWith('video');
+    const limit = isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB;
+    if (file.size > limit * 1024 * 1024) { alert(`${file.name}\n${limit}MB를 넘어서 올릴 수 없어요.`); return; }
+
+    const cell = document.createElement('div'); cell.className = 'cell';
+    const url = URL.createObjectURL(file);
+    if (isVideo) {
+      const v = document.createElement('video'); v.src = url; v.muted = true; v.playsInline = true; v.preload = 'metadata';
+      cell.appendChild(v);
+      const tag = document.createElement('span'); tag.className = 'vid'; tag.textContent = '영상'; cell.appendChild(tag);
+    } else {
+      const img = document.createElement('img'); img.src = url; img.onload = () => URL.revokeObjectURL(url); cell.appendChild(img);
+    }
+    cell.insertAdjacentHTML('beforeend', `
+      <button class="rm" type="button" aria-label="빼기"><svg viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="#8d8d8d"/><path d="M10 10l8 8M18 10l-8 8" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <div class="ov"></div><div class="prog"></div>`);
+    const it = { file, status: 'wait', el: cell };
+    cell.querySelector('.rm').onclick = () => { if (busy) return; items.splice(items.indexOf(it), 1); cell.remove(); refresh(); if (!items.length) go(2); };
+    items.push(it); $('grid').appendChild(cell);
+  }
+
+  function refresh() {
+    const n = items.length, pending = items.filter(i => i.status !== 'ok').length;
+    $('count').textContent = `${n}장 추가됨`;
+    $('upBtn').textContent = busy ? `업로드 중… ${n - pending}/${n}` : `업로드 시작 (총 ${pending}장)`;
+    $('upBtn').disabled = busy || pending === 0;
+  }
+
+  function mark(it, state, text, pct) {
+    it.el.classList.remove('up', 'ok', 'bad'); it.el.classList.add(state);
+    it.el.querySelector('.ov').textContent = text;
+    if (pct != null) it.el.querySelector('.prog').style.width = pct + '%';
+  }
+
+  async function startUpload() {
+    if (busy || !userName) return;
+    busy = true; refresh();
+    let ok = 0, fail = 0;
+    for (const it of items) {
+      if (it.status === 'ok') continue;
+      try {
+        mark(it, 'up', '0%', 0);
+        if (!KEEP_ORIGINAL && it.file.type.startsWith('image')) {
+          const small = await resizeImage(it.file).catch(() => null);
+          if (small) await api('uploadSmall', { name: userName, fileName: small.name, mimeType: small.type, base64: small.base64, token: TOKEN });
+          else await resumable(it);
+        } else {
+          await resumable(it);
+        }
+        it.status = 'ok'; mark(it, 'ok', '✓', 100); ok++;
+      } catch (err) {
+        it.status = 'fail'; mark(it, 'bad', '실패', 0); fail++; console.error(err);
+      }
+      refresh();
+    }
+    busy = false; refresh();
+    if (fail === 0) {
+      $('doneMsg').textContent = `${userName}님의 사진 ${ok}장을 신랑 신부에게 전달했어요.`;
+      go(4);
+    } else {
+      alert(`${fail}장을 올리지 못했어요. 다시 '업로드 시작'을 눌러 주세요.`);
+    }
+  }
+
+  function more() {
+    items.splice(0); $('grid').innerHTML = ''; refresh(); go(2);
+  }
+
+  async function resizeImage(file) {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, RESIZE_MAX / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.86));
+    if (!blob) throw new Error('resize failed');
+    const base64 = await new Promise((ok, fail) => { const fr = new FileReader(); fr.onload = () => ok(fr.result.split(',')[1]); fr.onerror = fail; fr.readAsDataURL(blob); });
+    return { name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg', base64 };
+  }
+
+  async function resumable(it) {
+    const file = it.file;
+    const { sessionUrl } = await api('createResumableSession', { name: userName, fileName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, origin: location.origin, token: TOKEN });
+    let start = 0;
+    while (start < file.size) {
+      const end = Math.min(start + CHUNK, file.size);
+      const status = await putChunk(sessionUrl, file.slice(start, end), start, end - 1, file.size, (loaded) => {
+        const pct = Math.round(((start + loaded) / file.size) * 100);
+        mark(it, 'up', pct + '%', pct);
+      });
+      if (status === 308) { start = end; continue; }
+      if (status === 200 || status === 201) return;
+      throw new Error('upload interrupted ' + status);
+    }
+  }
+
+  function putChunk(url, blob, from, to, total, onProgress) {
+    return new Promise((ok, fail) => {
+      const x = new XMLHttpRequest();
+      x.open('PUT', url, true);
+      x.setRequestHeader('Content-Range', `bytes ${from}-${to}/${total}`);
+      x.upload.onprogress = e => onProgress(e.loaded);
+      x.onload = () => ok(x.status);
+      x.onerror = () => fail(new Error('network'));
+      x.send(blob);
+    });
+  }
+</script>
+</body>
+</html>
