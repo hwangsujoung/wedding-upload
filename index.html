@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>윤성진 & 황수정 사진 업로드</title>
+<title>2026년 11월 7일 윤성진♥️황수정</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
@@ -182,9 +182,8 @@
   const MAX_FILES    = 30;
   const MAX_IMAGE_MB = 50;
   const MAX_VIDEO_MB = 500;
-  const KEEP_ORIGINAL = true;        // false 로 바꾸면 사진을 아래 크기로 줄여서 저장
-  const RESIZE_MAX   = 2000;
   const CHUNK        = 8 * 1024 * 1024;
+  const PARALLEL     = 3;             // 동시에 올리는 파일 수
 
   document.getElementById('wdate').textContent = WEDDING_DATE;
   document.getElementById('wnames').textContent = COUPLE_NAMES;
@@ -277,24 +276,39 @@
   async function startUpload() {
     if (busy || !userName) return;
     busy = true; refresh();
-    let ok = 0, fail = 0;
-    for (const it of items) {
-      if (it.status === 'ok') continue;
-      try {
-        mark(it, 'up', '0%', 0);
-        if (!KEEP_ORIGINAL && it.file.type.startsWith('image')) {
-          const small = await resizeImage(it.file).catch(() => null);
-          if (small) await api('uploadSmall', { name: userName, fileName: small.name, mimeType: small.type, base64: small.base64, token: TOKEN });
-          else await resumable(it);
-        } else {
-          await resumable(it);
-        }
-        it.status = 'ok'; mark(it, 'ok', '✓', 100); ok++;
-      } catch (err) {
-        it.status = 'fail'; mark(it, 'bad', '실패', 0); fail++; console.error(err);
-      }
-      refresh();
+    const pending = items.filter(i => i.status !== 'ok');
+    pending.forEach(it => mark(it, 'up', '대기', 0));
+
+    // 1) 세션 한 번에 발급
+    let sessions;
+    try {
+      sessions = await api('createResumableSessions', {
+        name: userName, origin: location.origin, token: TOKEN,
+        files: pending.map(it => ({ fileName: it.file.name, mimeType: it.file.type || 'application/octet-stream', size: it.file.size })),
+      });
+    } catch (err) {
+      busy = false; pending.forEach(it => { it.status = 'fail'; mark(it, 'bad', '실패', 0); }); refresh();
+      alert('업로드 준비에 실패했어요. 다시 시도해 주세요.\n' + err.message); return;
     }
+    pending.forEach((it, i) => { it.sessionUrl = sessions[i] && sessions[i].sessionUrl; });
+
+    // 2) PARALLEL 개씩 동시에 업로드
+    let ok = 0, fail = 0, idx = 0;
+    async function worker() {
+      while (idx < pending.length) {
+        const it = pending[idx++];
+        try {
+          if (!it.sessionUrl) throw new Error('no session');
+          await resumable(it);
+          it.status = 'ok'; mark(it, 'ok', '✓', 100); ok++;
+        } catch (err) {
+          it.status = 'fail'; mark(it, 'bad', '실패', 0); fail++; console.error(err);
+        }
+        refresh();
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(PARALLEL, pending.length) }, worker));
+
     busy = false; refresh();
     if (fail === 0) {
       $('doneMsg').textContent = `${userName}님의 사진 ${ok}장을 신랑 신부에게 전달했어요.`;
@@ -308,21 +322,8 @@
     items.splice(0); $('grid').innerHTML = ''; refresh(); go(2);
   }
 
-  async function resizeImage(file) {
-    const bmp = await createImageBitmap(file);
-    const scale = Math.min(1, RESIZE_MAX / Math.max(bmp.width, bmp.height));
-    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    c.getContext('2d').drawImage(bmp, 0, 0, w, h);
-    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.86));
-    if (!blob) throw new Error('resize failed');
-    const base64 = await new Promise((ok, fail) => { const fr = new FileReader(); fr.onload = () => ok(fr.result.split(',')[1]); fr.onerror = fail; fr.readAsDataURL(blob); });
-    return { name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg', base64 };
-  }
-
   async function resumable(it) {
-    const file = it.file;
-    const { sessionUrl } = await api('createResumableSession', { name: userName, fileName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, origin: location.origin, token: TOKEN });
+    const file = it.file, sessionUrl = it.sessionUrl;
     let start = 0;
     while (start < file.size) {
       const end = Math.min(start + CHUNK, file.size);
