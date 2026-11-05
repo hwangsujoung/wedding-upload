@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta property="og:type" content="website">
 <meta property="og:title" content="2026년 11월 7일 윤성진♥️황수정">
-<meta property="og:description" content="오늘의 추억을 사진으로 남겨주세요">
+<meta property="og:description" content="2026년 11월 7일 · 오늘의 추억을 사진으로 남겨주세요">
 <meta property="og:image" content="https://hwangsujoung.github.io/wedding-upload/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -207,11 +207,26 @@
   catch (e) { TOKEN = Math.random().toString(36).slice(2); }
 
   // Apps Script API 호출: text/plain 으로 보내야 CORS preflight 가 안 생김
-  async function api(action, payload) {
-    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action, ...payload }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || '요청 실패');
-    return json.data;
+  // 동시 접속이 몰려 Apps Script 가 거부하면 1.5초 → 3초 → 6초 간격으로 최대 4번 재시도
+  async function api(action, payload, attempt = 0) {
+    try {
+      const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action, ...payload }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' });
+      const text = await res.text();
+      let json; try { json = JSON.parse(text); } catch (e) { throw new Error('busy'); } // 과부하 시 HTML 오류 페이지가 옴
+      if (!json.ok) {
+        if (/too many|simultaneous|quota|service invoked/i.test(json.error || '')) throw new Error('busy');
+        throw new Error(json.error || '요청 실패');
+      }
+      return json.data;
+    } catch (err) {
+      const retryable = err.message === 'busy' || err.name === 'TypeError'; // TypeError = Failed to fetch
+      if (retryable && attempt < 4) {
+        await new Promise(r => setTimeout(r, 1500 * Math.pow(2, attempt) + Math.random() * 500));
+        return api(action, payload, attempt + 1);
+      }
+      if (retryable) throw new Error('접속이 몰려 잠시 지연되고 있어요. 잠시 후 다시 눌러 주세요.');
+      throw err;
+    }
   }
 
   function go(n) {
